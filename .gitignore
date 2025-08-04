@@ -1,0 +1,12 @@
+# Ignore .venv python virtuell environment
+.venv/
+
+# Python-Cache-Dateien
+__pycache__/
+*.py[cod]
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Sonstiges
+.env
