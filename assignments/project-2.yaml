@@ -1,0 +1,286 @@
+title: Diabetes-Vorhersage mit Support Vector Machine (SVM)
+
+question: |
+
+
+  ### 1. Aufgabenstellung
+
+  In diesem Kapitel wirst du ein vollständiges Machine-Learning-Projekt umsetzen. Ziel ist es, ein System zu entwickeln, das anhand medizinischer Parameter vorhersagen kann, ob eine Person an Diabetes leidet oder nicht.
+
+  Dafür verwenden wir:
+
+  Einen klassischen Supervised Learning Algorithmus: den Support Vector Machine (SVM) Classifier.
+
+  Den Pima-Indians-Diabetes-Datensatz, welcher medizinische Informationen über weibliche Patienten enthält.
+
+  **Zielsetzung**:
+
+  Trainiere ein SVM-Modell, das zwischen "diabetisch" und "nicht-diabetisch" unterscheiden kann.
+
+  Finde die Genauigkeit des Modells auf Trainings- und Testdaten.
+
+  Erstelle ein Vorhersagesystem, das neue Patientendaten klassifiziert.
+
+  ## 2. Hinweise & Tipps
+
+  Der Datensatz enthält 8 Merkmale wie z. B. Glukosewert, BMI, Blutdruck usw. Das Label "Outcome" gibt an, ob die Person Diabetes hat (1) oder nicht (0).
+
+  Standardisierung der Daten ist wichtig, da die Skalen der Merkmale unterschiedlich sind.
+
+  Nutze Train-Test-Split, um Überanpassung zu vermeiden.
+
+  Achte bei der Modellbewertung sowohl auf das Training als auch auf das Testing.
+
+  Verwende Numpy und Pandas zur Datenmanipulation und Scikit-Learn für ML-Komponenten.
+tip: |
+
+
+
+solution:  |
+
+### Abhängigkeiten importieren
+
+  Bevor wir überhaupt mit dem eigentlichen Machine-Learning-Modell anfangen können, müssen wir ein paar wichtige Bibliotheken in Python importieren. Diese stellen uns Funktionen bereit, die wir für die Datenverarbeitung, das Modelltraining und die Auswertung brauchen.
+
+  Wir verwenden numpy für mathematische Operationen, pandas zum Laden und Bearbeiten der Daten. StandardScaler brauchen wir später zur Standardisierung der Werte, train_test_split für die Aufteilung der Daten, svm für unser Support Vector Machine Modell und accuracy_score, um die Genauigkeit des Modells zu messen.
+
+  #### Abhängigkeiten importieren
+
+  ```python
+  import numpy as np
+  import pandas as pd  # numpy und pandas für Datenverarbeitung,
+  from sklearn.preprocessing import StandardScaler # StandardScaler zur Standardisierung der Daten,
+  from sklearn.model_selection import train_test_split # train_test_split zur Aufteilung in Trainings- und Testdaten,
+  from sklearn import svm # svm für den Support Vector Machine Algorithmus,
+  from sklearn.metrics import accuracy_score # accuracy_score zur Bewertung der Modellgenauigkeit
+  ```
+  ### Datensatz laden und überblicken
+
+  Jetzt, wo die Werkzeuge bereit sind, können wir den Datensatz laden. Wir verwenden hier den Pima-Indians-Diabetes-Datensatz. Der enthält medizinische Werte von Patientinnen – also z. B. Glukose, Blutdruck, BMI usw.
+  Dadurch bekommen wir einen Eindruck über Struktur und Inhalt des Datensatzes (768 Zeilen, 9 Spalten).
+
+
+  ```python
+  # Laden des Diabetes-Datensatzes aus einer CSV-Datei in ein pandas DataFrame
+  diabetes_dataset = pd.read_csv('../../Data/Project 2/diabetes.csv') 
+  ```
+
+  Wir lesen die Datei ein und speichern sie in einer Variable namens diabetes_dataset, die jetzt ein sogenannter DataFrame ist – das ist im Grunde eine Tabelle mit Zeilen und Spalten
+  Bevor wir mit der Analyse weitermachen, schauen wir uns die Daten an. Das ist wie ein erster Blick auf eine Excel-Tabelle – wir wollen einfach ein Gefühl für den Aufbau bekommen.
+
+  ```python
+  # Anzeige der ersten 5 Zeilen des Datensatzes zur ersten Orientierung
+  diabetes_dataset.head()
+  ```
+  Mit head() sehen wir die ersten 5 Zeilen, describe() gibt uns statistische Infos wie Mittelwert, Standardabweichung oder Minimum und Maximum. Das hilft, ein Gefühl für die Wertebereiche zu bekommen.“
+
+  ```python
+    # Ausgabe statistischer Kennzahlen wie Mittelwert, Standardabweichung, Min/Max usw.
+    diabetes_dataset.describe()
+
+  
+  ```
+  ### Labels analysieren
+
+  Wir wollen auch wissen, wie viele Personen im Datensatz diabetisch sind und wie viele nicht. Das ist wichtig, um zu sehen, ob die Daten ausgeglichen sind.
+  Das Label Outcome ist entweder 0 (nicht-diabetisch) oder 1 (diabetisch). Die Verteilung zeigt, ob unser Modell später genug Beispiele von beiden Klassen sieht.
+  Gibt uns Informationen über das Verhältnis von diabetischen (1) und nicht-diabetischen (0) Patienten.
+
+
+  ```python
+  diabetes_dataset['Outcome'].value_counts() # zählt, wie oft die Klassen 0 (nicht-diabetisch) und 1 (diabetisch) im Label 'Outcome' vorkommen
+  ```
+
+  ### Gruppieren und Mittelwerte vergleichen
+
+  Jetzt schauen wir uns an, wie sich die Werte zwischen diabetischen und nicht-diabetischen Personen unterscheiden. Vielleicht sehen wir z. B., dass Diabetiker im Schnitt höhere Glukosewerte haben
+
+  ### Merkmale (X) und Label (y) trennen
+
+
+    ```python
+  # Berechnet den Durchschnitt jeder Spalte getrennt nach dem Wert von 'Outcome' (0 oder 1)
+
+  diabetes_dataset.groupby('Outcome').mean()  # → Zeigt z. B., ob diabetische Patienten im Durchschnitt höhere Glukosewerte haben
+  ```
+
+  Das ist spannend, denn solche Unterschiede kann unser Modell später lernen und nutzen, um Vorhersagen zu treffen.
+  Zeigt uns signifikante Unterschiede zwischen den beiden Gruppen (z. B. im Glukosewert).
+
+  ### Standardisierung der Merkmale
+
+  Als Nächstes trennen wir die Daten in zwei Bereiche: Die Eingabedaten (X) und das Ziel bzw. Label (Y). Das Ziel ist, dass das Modell aus X vorhersagen soll, was in Y steht
+
+ 
+
+  ```python
+  # Trennen der Eingabedaten (X) von den Zielwerten/Labels (Y)
+
+  # X enthält alle Spalten außer 'Outcome',
+  X = diabetes_dataset.drop(columns = 'Outcome', axis=1)
+
+  # Y enthält nur die 'Outcome'-Spalte
+  Y = diabetes_dataset['Outcome']
+  ```
+
+  ```python
+  # Ausgabe der Eingabedaten (X) -> Man sieht, dass X alle Spalten enthält 
+  print(X)
+  ```
+    ```python
+  print(Y) # Ausgabe der Zielwerte (Y) zur Kontrolle. Man sieht, dass Y nur Wete aus eine Spalte liefert 
+  ```
+
+  ### Standardisierung der Merkmale
+
+  Jetzt kommt ein ganz wichtiger Schritt: die Standardisierung. Manche Werte wie Glukose oder Insulin haben viel größere Zahlen als z. B. die Anzahl der Schwangerschaften. Das kann ein Problem sein.
+
+
+  ```python
+ # Erstellen eines StandardScaler-Objekts zur späteren Standardisierung der Merkmale
+
+  scaler = StandardScaler()
+
+  ```
+
+
+  ```python
+  # "Lernen" der Mittelwerte und Standardabweichungen aus den Trainingsdaten X
+  # (Diese werden für die spätere Transformation verwendet)
+
+  scaler.fit(X)
+  ```
+
+
+  ```python
+  #  Anwenden der Standardisierung: Skalieren der Daten auf Mittelwert = 0 und Standardabweichung = 1
+
+  standardized_data = scaler.transform(X)
+  ```
+
+  ```python
+#  Ausgabe der standardisierten Daten zur Überprüfung – alle Werte liegen jetzt im ähnlichen Bereich
+
+  print(standardized_data)
+  ```
+  Wir bringen deshalb alle Merkmale auf die gleiche Skala – mit Mittelwert 0 und Standardabweichung 1. So lernt unser Modell effizienter
+
+  ```python
+  #  Überschreiben von X mit den standardisierten Daten
+  X = standardized_data
+
+  # Y bleibt das Ziel (Label) – enthält weiterhin die Outcome-Werte (0 oder 1)
+  Y = diabetes_dataset['Outcome']
+  ```
+
+  ### Aufteilung in Trainings- und Testdaten
+
+  Wir teilen die Daten auf: einen Teil fürs Training, einen Teil zum Testen. So prüfen wir später, wie gut das Modell auf neuen, unbekannten Daten funktioniert.
+  80% Training, 20% Test. stratify=y sorgt für gleiche Verteilung der Labels in beiden Sets.
+
+
+  ```python
+  # Aufteilen der Daten in Trainings- und Testsets
+  # 80 % Training, 20 % Test – mit gleichmäßiger Verteilung der Klassen dank `stratify=Y`
+  # `random_state=2` sorgt für Reproduzierbarkeit der Aufteilung
+
+  X_train, X_test, Y_train, Y_test = train_test_split(X,Y, test_size = 0.2, stratify=Y, random_state=2)
+  ```
+  20 % der Daten verwenden wir fürs Testen. Dank stratify=Y bleibt das Verhältnis von 0 und 1 erhalten
+
+
+
+  ```python
+
+  #  Ausgabe der Formen (Anzahl Zeilen & Spalten) der Gesamtdaten, Trainingsdaten und Testdaten
+
+
+  print(X.shape, X_train.shape, X_test.shape) # → Kontrolle, ob die Aufteilung korrekt erfolgt ist
+    ```
+
+  ####  Modell erstellen und trainieren
+
+  Jetzt erstellen wir unser Support Vector Machine Modell und trainieren es mit den Trainingsdaten
+  ```python
+  #  Erstellen eines SVM-Klassifikators mit linearem Kernel
+
+  classifier = svm.SVC(kernel='linear') # → geeignet für Daten, die (nahezu) linear trennbar sind
+  ```
+
+
+  ```python
+  #  Training des SVM-Klassifikators mit den Trainingsdaten
+
+  # Das Modell "lernt", wie es zwischen diabetisch (1) und nicht-diabetisch (0) unterscheiden kann
+  classifier.fit(X_train, Y_train)
+
+  ```
+  Der linear Kernel ist gut geeignet, wenn sich die Klassen mit einer geraden Linie trennen lassen – was bei diesen Daten oft der Fall ist.
+
+  #### Genauigkeit prüfen
+
+  Wir prüfen jetzt, wie gut das Modell gelernt hat – sowohl auf den Trainingsdaten als auch auf den Testdaten.
+
+
+  ```python
+  # Vorhersagen auf den Trainingsdaten treffen
+  X_train_prediction = classifier.predict(X_train)
+
+
+  #  Berechnung der Genauigkeit auf den Trainingsdaten
+
+  training_data_accuracy = accuracy_score(X_train_prediction, Y_train) # → Misst, wie viele Vorhersagen auf dem Trainingsset korrekt waren
+  ```
+
+  ```python
+  #  Ausgabe der Genauigkeit des Modells auf den Trainingsdaten
+
+  print('Accuracy score of the training data : ', training_data_accuracy)
+  ```
+
+  ```python
+  
+  #  Vorhersagen auf den Testdaten treffen
+  X_test_prediction = classifier.predict(X_test)
+
+  #  Berechnung der Genauigkeit auf den Testdaten
+
+  test_data_accuracy = accuracy_score(X_test_prediction, Y_test) # → Zeigt, wie gut das Modell auf unbekannten (nicht gesehenen) Daten performt
+  ```
+
+  ```python
+  print('Accuracy score of the test data : ', test_data_accuracy) # Ausgabe der Genauigkeit des Modells auf den Testdaten
+  ```
+
+  Die Werte zeigen, ob das Modell gut generalisiert. Wenn die Testgenauigkeit viel schlechter ist als die Trainingsgenauigkeit, könnte es überangepasst sein.
+
+  ### Vorhersagesystem bauen
+
+
+  Jetzt kommt der spannende Teil: Wir testen das Modell mit echten neuen Werten. Damit können wir sehen, ob es wirklich funktioniert
+
+
+  ```python
+  #  Beispielinput eines neuen Patienten (alle 8 medizinischen Merkmale)
+  input_data = (5, 166, 72, 19, 175, 25.8, 0.587, 51)
+
+  #  Umwandlung in ein NumPy-Array (notwendig für weitere Verarbeitung)
+  input_data_as_numpy_array = np.asarray(input_data)
+
+  #  Reshape: Umformen in 2D-Array, da das Modell Eingaben zeilenweise erwartet
+  input_data_reshaped = input_data_as_numpy_array.reshape(1, -1)
+
+  #  Standardisieren der Eingabedaten mit dem zuvor gelernten StandardScaler
+  std_data = scaler.transform(input_data_reshaped)
+  print(std_data)  # Zeigt die skalierten Werte
+
+  #  Vorhersage mit dem trainierten Modell
+  prediction = classifier.predict(std_data)
+  print(prediction)  # Gibt 0 (nicht-diabetisch) oder 1 (diabetisch) zurück
+
+  #  Interpretation des Ergebnisses
+  if prediction[0] == 0:
+      print('The person is not diabetic')  # Modell sagt: kein Diabetes
+  else:
+      print('The person is diabetic')      # Modell sagt: Diabetes
+      ````

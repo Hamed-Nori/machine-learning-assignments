@@ -71,6 +71,8 @@ question: |
 
   Begründen Sie Ihre Schritte nachvollziehbar.
 
+solution: |
+
   #### Abhängigkeiten importieren
 
   ```python
